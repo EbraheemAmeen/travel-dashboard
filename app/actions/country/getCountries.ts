@@ -7,9 +7,11 @@ import { redirect } from 'next/navigation';
 interface PaginationParams {
   page: number;
   limit: number;
+  orderBy?: 'createdAt' | 'name';
+  orderDir?: 'asc' | 'desc';
 }
 
-export async function getCountries({ page, limit }: PaginationParams) {
+export async function getCountries({ page, limit, orderBy, orderDir }: PaginationParams) {
   const accessToken = (await cookies()).get('accessToken')?.value;
     
   if (!accessToken) {
@@ -19,14 +21,16 @@ export async function getCountries({ page, limit }: PaginationParams) {
 
   try {
     const response = await axios.get(
-      `${process.env.API_URL}/country`,
+      `${process.env.API_URL}/countries`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
         params: {
           page,
-          limit
+          limit,
+          ...(orderBy ? { orderBy } : {}),
+          ...(orderDir ? { orderDir } : {}),
         }
       }
     );

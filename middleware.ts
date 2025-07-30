@@ -16,7 +16,7 @@ export function middleware(req: NextRequest) {
 
   if (isLoggedIn && isLoginPage) {
     // If logged in and trying to access login page, redirect to home
-    return NextResponse.redirect(new URL('/home', req.url));
+    return NextResponse.redirect(new URL('/', req.url));
   }
 
   return NextResponse.next();

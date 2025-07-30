@@ -1,17 +1,23 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-   images: {
+
+  images: {
     remotePatterns: [
       {
         protocol: 'http',
-        hostname: '192.168.137.1',
+        hostname: 'localhost',
         port: '9000',
         pathname: '/nestjsstorage/**',
       },
-      // Add other patterns if needed
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '9000',
+        pathname: '/avatars/**',
+      },
     ],
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig

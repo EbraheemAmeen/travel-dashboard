@@ -22,8 +22,8 @@ export default function RootLayout({
       <body
       >
         <Providers>
-        {children}
         <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+        {children}
       </Providers>
       </body>
     </html>

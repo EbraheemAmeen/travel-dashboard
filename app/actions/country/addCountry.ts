@@ -8,6 +8,10 @@ import { cookies } from 'next/headers'; // Used to access request cookies on the
 interface NewCountryData {
   code: string; // The two-letter country code (e.g., "US", "SY")
   name: string; // The full country name (e.g., "United States", "Syria")
+  currency: string; // The currency code (e.g., "USD", "EUR")
+  timezone: string; // The timezone (e.g., "America/New_York", "Europe/London")
+  description: string; // The country description
+  isActive: number; // The active status (1 for active, 0 for inactive)
   mainImageId: number | null; // The ID of the main image, or null if not selected
   galleryImageIds: number[]; // An array of IDs for gallery images
 }
@@ -29,7 +33,7 @@ export async function createCountry(countryData: NewCountryData): Promise<any> {
     // Make the POST request to the API.
     // The API_URL should be defined in your environment variables (e.g., .env.local).
     const response = await axios.post(
-      `${process.env.API_URL}/country`, // Ensure process.env.API_URL is correctly configured
+      `${process.env.API_URL}/countries`, // Ensure process.env.API_URL is correctly configured
       countryData, // The payload containing the new country's data
       {
         headers: {

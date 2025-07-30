@@ -12,12 +12,12 @@ interface MediaFile {
   bucket: string;
   objectKey: string;
   mime: string;
-  size: number;
+  size: number | null;
   scope: string;
-  ownerId: null | number;
+  ownerId: string | null;
   encrypted: boolean;
   uploadedAt: string;
-  deletedAt: null | string;
+  deletedAt: string | null;
   url?: string;
 }
 
@@ -26,6 +26,7 @@ interface MediaModalProps {
   onClose: () => void;
   onSelect: (images: MediaFile[]) => void;
   apiBaseUrl: string;
+  imagesUrl: string;
   isMultiSelect?: boolean;
   currentMainImage?: MediaFile | null;
   initiallySelected?: MediaFile[];
@@ -36,15 +37,23 @@ export default function MediaModal({
   onClose,
   onSelect,
   apiBaseUrl,
+  imagesUrl,
   isMultiSelect = false,
   currentMainImage = null,
   initiallySelected = []
 }: MediaModalProps) {
   const [selectedImages, setSelectedImages] = useState<MediaFile[]>(initiallySelected);
   const [tempSelectedImage, setTempSelectedImage] = useState<MediaFile | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const { ref, inView } = useInView();
   const queryClient = useQueryClient();
   const modalRef = useRef<HTMLDivElement>(null);
+  
+  // ✅ FIX: Ensure the base URL for images has a protocol.
+  const fullImagesUrl =
+    imagesUrl && !imagesUrl.startsWith('http')
+      ? `http://${imagesUrl}`
+      : imagesUrl || '';
 
   // Reset selections when modal opens
   useEffect(() => {
@@ -67,7 +76,7 @@ export default function MediaModal({
   }, [isOpen, onClose]);
 
   // Infinite query for media
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } = useInfiniteQuery({
     queryKey: ['media'],
     queryFn: ({ pageParam = 1 }) => getAllMedia({ page: pageParam, limit: 12 }),
     initialPageParam: 1,
@@ -78,9 +87,10 @@ export default function MediaModal({
   // Filter media based on selection mode
   const filteredMedia = useMemo(() => {
     const allMedia = data?.pages.flatMap(page => 
-      page.files.map((file: { bucket: any; objectKey: any; }) => ({
+      page.files.map((file: any) => ({
         ...file,
-        url: `${process.env.NEXT_PUBLIC_IMAGES_URL}/${file.bucket}/${file.objectKey}`
+        // ✅ FIX: Use the corrected URL variable
+        url: fullImagesUrl ? `${fullImagesUrl}/${file.bucket}/${file.objectKey}` : undefined
       }))
     ) || [];
 
@@ -95,7 +105,7 @@ export default function MediaModal({
       }
       return true;
     });
-  }, [data, isMultiSelect, currentMainImage, initiallySelected]);
+  }, [data, isMultiSelect, currentMainImage, initiallySelected, fullImagesUrl]);
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -115,10 +125,23 @@ export default function MediaModal({
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data',
           },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / (progressEvent.total ?? 1)
+            );
+            setUploadProgress(percentCompleted);
+          },
         }
       );
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['media'] }),
+    onSuccess: () => {
+      setUploadProgress(0);
+      queryClient.invalidateQueries({ queryKey: ['media'] });
+    },
+    onError: (error) => {
+      console.error('Upload failed:', error);
+      setUploadProgress(0);
+    },
   });
 
   // Infinite scroll effect
@@ -127,8 +150,17 @@ export default function MediaModal({
   }, [inView, hasNextPage, fetchNextPage]);
 
   // Dropzone for uploads
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0) {
+        uploadMutation.mutate(acceptedFiles);
+      }
+    },
+    [uploadMutation]
+  );
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: useCallback((files: File[]) => uploadMutation.mutate(files), [uploadMutation]),
+    onDrop,
     accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif'], 'application/pdf': ['.pdf'] },
     multiple: true
   });
@@ -175,9 +207,9 @@ export default function MediaModal({
           <input {...getInputProps()} />
           {uploadMutation.isPending ? (
             <div className="space-y-2">
-              <p>Uploading... {uploadMutation.progress || 0}%</p>
+              <p>Uploading... {uploadProgress}%</p>
               <div className="w-full bg-gray-700 rounded-full h-2.5">
-                <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadMutation.progress || 0}%` }} />
+                <div className="bg-indigo-600 h-2.5 rounded-full" style={{ width: `${uploadProgress}%` }} />
               </div>
             </div>
           ) : (
@@ -188,47 +220,66 @@ export default function MediaModal({
         </div>
 
         {/* Media grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 flex-1 overflow-y-auto">
-          {filteredMedia.map((item) => {
-            const isSelected = isMultiSelect 
-              ? selectedImages.some(img => img.id === item.id)
-              : tempSelectedImage?.id === item.id;
-            const isCurrentMainImage = currentMainImage?.id === item.id;
+        <div className="flex-1 overflow-y-auto">
+          {isFetching && !data ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {filteredMedia.map((item) => {
+                const isSelected = isMultiSelect 
+                  ? selectedImages.some(img => img.id === item.id)
+                  : tempSelectedImage?.id === item.id;
+                const isCurrentMainImage = currentMainImage?.id === item.id;
 
-            return (
-              <div
-                key={item.id}
-                className={`relative aspect-square border-2 rounded-lg cursor-pointer group transition-all ${
-                  isSelected ? 'border-indigo-500 ring-2 ring-indigo-500' : 'border-transparent hover:border-gray-500'
-                }`}
-                onClick={() => handleImageClick(item)}
-              >
-                <Image
-                  src={item.url || ''}
-                  alt={item.objectKey}
-                  fill
-                  className="object-cover rounded-lg"
-                  sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
-                />
-                
-                <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center ${
-                  isSelected ? 'bg-indigo-500' : 'bg-gray-800/80 opacity-0 group-hover:opacity-100'
-                }`}>
-                  {isSelected && <span className="text-white">✓</span>}
-                </div>
-                
-                {isCurrentMainImage && (
-                  <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                    Main
+                return (
+                  <div
+                    key={item.id}
+                    className={`relative aspect-square border-2 rounded-lg cursor-pointer group transition-all ${
+                      isSelected ? 'border-indigo-500 ring-2 ring-indigo-500' : 'border-transparent hover:border-gray-500'
+                    }`}
+                    onClick={() => handleImageClick(item)}
+                  >
+                    <Image
+                      src={item.url || ''}
+                      alt={item.objectKey}
+                      fill
+                      className="object-cover rounded-lg"
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+                    />
+                    
+                    <div className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center ${
+                      isSelected ? 'bg-indigo-500' : 'bg-gray-800/80 opacity-0 group-hover:opacity-100'
+                    }`}>
+                      {isSelected && <span className="text-white">✓</span>}
+                    </div>
+                    
+                    {isCurrentMainImage && (
+                      <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                        Main
+                      </div>
+                    )}
+                    
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                      <p className="text-sm text-white truncate">{item.objectKey.split('/').pop()}</p>
+                    </div>
                   </div>
-                )}
-                
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                  <p className="text-sm text-white truncate">{item.objectKey.split('/').pop()}</p>
+                );
+              })}
+              
+              {/* Infinite scroll trigger */}
+              {hasNextPage && (
+                <div ref={ref} className="col-span-full flex justify-center p-4">
+                  {isFetchingNextPage ? (
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+                  ) : (
+                    <div className="h-8"></div>
+                  )}
                 </div>
-              </div>
-            );
-          })}
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

@@ -8,29 +8,26 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { showErrorToast } from '@/app/lib/ErrorToastUtils';
 
-
-// Custom error toast with dismiss button
-
-
 interface MediaFile {
   id: number;
   bucket: string;
   objectKey: string;
   mime: string;
-  size: number;
+  size: number | null;
   scope: string;
-  ownerId: null | number;
+  ownerId: string | null;
   encrypted: boolean;
   uploadedAt: string;
-  deletedAt: null | string;
-  url: string;
+  deletedAt: string | null;
+  url?: string;
 }
 
 interface NewCountryProps {
   apiBaseUrl: string;
+  imagesUrl: string;
 }
 
-const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
+const NewCountryForm = ({ apiBaseUrl, imagesUrl }: NewCountryProps) => {
   const [selectedMainImage, setSelectedMainImage] = useState<MediaFile | null>(null);
   const [selectedGalleryImages, setSelectedGalleryImages] = useState<MediaFile[]>([]);
   const [isMainImageModalOpen, setIsMainImageModalOpen] = useState(false);
@@ -38,7 +35,11 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
   const [formData, setFormData] = useState({
     countryCode: '',
     countryName: '',
+    currency: '',
+    timezone: '',
+    description: '',
   });
+  const [isActive, setIsActive] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -60,7 +61,7 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
     setSelectedGalleryImages(prev => prev.filter(img => img.id !== id));
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -73,13 +74,24 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
     }
   };
 
+  const clearAllFields = () => {
+    setFormData({
+      countryCode: '',
+      countryName: '',
+      currency: '',
+      timezone: '',
+      description: '',
+    });
+    setIsActive(true);
+    setSelectedMainImage(null);
+    setSelectedGalleryImages([]);
+  };
+
   const newCountryMutation = useMutation({
     mutationFn: createCountry,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['countries'] });
-      setFormData({ countryCode: '', countryName: '' });
-      setSelectedMainImage(null);
-      setSelectedGalleryImages([]);
+      clearAllFields();
       setErrorMessage(null);
       toast.success('Country added successfully!');
       router.push('/countries');
@@ -110,6 +122,31 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
       return;
     }
 
+    if (!formData.currency.trim()) {
+      showErrorToast('Currency is required.');
+      return;
+    }
+
+    if (formData.currency.trim().length !== 3) {
+      showErrorToast('Currency must be exactly 3 letters (e.g., USD, EUR).');
+      return;
+    }
+
+    if (!formData.timezone.trim()) {
+      showErrorToast('Timezone is required.');
+      return;
+    }
+
+    if (!formData.timezone.includes('/')) {
+      showErrorToast('Timezone must be in format Continent/City (e.g., America/New_York).');
+      return;
+    }
+
+    if (!formData.description.trim()) {
+      showErrorToast('Description is required.');
+      return;
+    }
+
     if (!selectedMainImage) {
       showErrorToast('A main image is required.');
       return;
@@ -118,6 +155,10 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
     const payload = {
       code: formData.countryCode.toUpperCase().trim(),
       name: formData.countryName.trim(),
+      currency: formData.currency.trim(),
+      timezone: formData.timezone.trim(),
+      description: formData.description.trim(),
+      isActive: isActive ? 1 : 0,
       mainImageId: selectedMainImage.id,
       galleryImageIds: selectedGalleryImages.map((image) => image.id),
     };
@@ -172,6 +213,97 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
           )}
         </div>
 
+        <div className="space-y-2 relative">
+          <label className="block text-lg font-medium">Currency</label>
+          <input
+            type="text"
+            name="currency"
+            value={formData.currency}
+            onChange={handleInputChange}
+            maxLength={3}
+            className="w-full px-4 py-3 text-lg bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="e.g. USD"
+          />
+          {formData.currency && (
+            <button
+              onClick={() => clearField('currency')}
+              className="absolute right-2 bottom-2 px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded-lg"
+            >
+              ×
+            </button>
+          )}
+          <p className="text-sm text-gray-400">Common currencies: USD, EUR, GBP, JPY, CAD, AUD, CHF, CNY</p>
+        </div>
+
+        <div className="space-y-2 relative">
+          <label className="block text-lg font-medium">Timezone</label>
+          <input
+            type="text"
+            name="timezone"
+            value={formData.timezone}
+            onChange={handleInputChange}
+            className="w-full px-4 py-3 text-lg bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="e.g. America/New_York"
+          />
+          {formData.timezone && (
+            <button
+              onClick={() => clearField('timezone')}
+              className="absolute right-2 bottom-2 px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded-lg"
+            >
+              ×
+            </button>
+          )}
+          <p className="text-sm text-gray-400">Common timezones: America/New_York, Europe/London, Asia/Tokyo, Australia/Sydney</p>
+        </div>
+
+        <div className="space-y-2 relative">
+          <label className="block text-lg font-medium">Description</label>
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            rows={4}
+            className="w-full px-4 py-3 text-lg bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            placeholder="Enter country description..."
+          />
+          {formData.description && (
+            <button
+              onClick={() => clearField('description')}
+              className="absolute right-2 bottom-2 px-3 py-1 text-sm bg-red-600 hover:bg-red-700 rounded-lg"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-lg font-medium">Status</label>
+          <div className="flex items-center space-x-4">
+            <button
+              type="button"
+              onClick={() => setIsActive(!isActive)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                isActive ? 'bg-indigo-600' : 'bg-gray-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isActive ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className="text-lg text-gray-300">
+              {isActive ? 'Active' : 'Inactive'}
+            </span>
+          </div>
+          <p className="text-sm text-gray-400">
+            {isActive 
+              ? 'This country will be active and visible to users.' 
+              : 'This country will be inactive and hidden from users.'
+            }
+          </p>
+        </div>
+
         <div className="space-y-2">
           <label className="block text-lg font-medium">Main Image</label>
           <button
@@ -185,7 +317,7 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
             <div className="mt-4 flex items-center space-x-4">
               <div className="w-32 h-24 relative border-2 rounded-lg overflow-hidden">
                 <Image
-                  src={selectedMainImage.url}
+                  src={selectedMainImage.url || ''}
                   alt="Selected Main"
                   fill
                   className="object-cover"
@@ -219,7 +351,7 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
                 <div key={image.id} className="relative group">
                   <div className="w-32 h-24 relative border-2 rounded-lg overflow-hidden">
                     <Image
-                      src={image.url}
+                      src={image.url || ''}
                       alt="Gallery"
                       fill
                       className="object-cover"
@@ -242,11 +374,7 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
 
       <div className="mt-[100px] flex justify-between">
         <button
-          onClick={() => {
-            setFormData({ countryCode: '', countryName: '' });
-            setSelectedMainImage(null);
-            setSelectedGalleryImages([]);
-          }}
+          onClick={clearAllFields}
           className="px-6 py-3 text-lg bg-gray-700 hover:bg-gray-600 rounded-lg"
         >
           Clear All Fields
@@ -267,6 +395,7 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
         onClose={() => setIsMainImageModalOpen(false)}
         onSelect={handleSelectMainImage}
         apiBaseUrl={apiBaseUrl}
+        imagesUrl={imagesUrl}
         isMultiSelect={false}
         initiallySelected={selectedGalleryImages}
         currentMainImage={selectedMainImage}
@@ -278,6 +407,7 @@ const NewCountryForm = ({ apiBaseUrl }: NewCountryProps) => {
         onClose={() => setIsGalleryModalOpen(false)}
         onSelect={handleSelectGalleryImage}
         apiBaseUrl={apiBaseUrl}
+        imagesUrl={imagesUrl}
         isMultiSelect={true}
         initiallySelected={selectedGalleryImages}
         currentMainImage={selectedMainImage}
