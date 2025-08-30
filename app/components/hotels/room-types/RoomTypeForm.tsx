@@ -246,7 +246,7 @@ export default function RoomTypeForm({
               {mainImage ? (
                 <div className="relative">
                   <img
-                    src={`${imagesUrl}/${mainImage.bucket}/${mainImage.objectKey}`}
+                    src={`${imagesUrl}/${mainImage.objectKey}`}
                     alt={mainImage.objectKey}
                     className="w-20 h-20 object-cover rounded-lg"
                   />
@@ -284,7 +284,7 @@ export default function RoomTypeForm({
                   {galleryImages.map((image, index) => (
                     <div key={image.id} className="relative">
                       <img
-                        src={`${imagesUrl}/${image.bucket}/${image.objectKey}`}
+                        src={`${imagesUrl}/${image.objectKey}`}
                         alt={image.objectKey}
                         className="w-16 h-16 object-cover rounded-lg"
                       />

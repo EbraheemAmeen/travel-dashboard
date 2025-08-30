@@ -90,7 +90,7 @@ export default function MediaModal({
       page.files.map((file: any) => ({
         ...file,
         // ✅ FIX: Use the corrected URL variable
-        url: fullImagesUrl ? `${fullImagesUrl}/${file.bucket}/${file.objectKey}` : undefined
+        url: fullImagesUrl ? `${fullImagesUrl}/${file.objectKey}` : undefined
       }))
     ) || [];
 

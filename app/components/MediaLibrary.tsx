@@ -121,10 +121,10 @@ export default function MediaLibrary({
       page.files.map((file: any) => ({
         ...file,
         // ✅ FIX: Use the corrected URL variable
-        url: `${fullImagesUrl}/${file.bucket}/${file.objectKey}`,
+        url: `${fullImagesUrl}/${file.objectKey}`,
       }))
     ) || []
-
+console.log(media)
   const currentPage = data?.pages[data.pages.length - 1]?.page || initialPage
   const totalPages = data?.pages[0]?.totalPages || 1
 

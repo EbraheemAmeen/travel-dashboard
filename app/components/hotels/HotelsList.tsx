@@ -217,7 +217,7 @@ export default function HotelsList({
               {hotel.mainImage && (
                 <div className="relative h-48">
                   <Image
-                    src={`${process.env.NEXT_PUBLIC_IMAGES_URL}/${hotel.mainImage.bucket}/${hotel.mainImage.objectKey}`}
+                    src={`${process.env.NEXT_PUBLIC_IMAGES_URL}/${hotel.mainImage.objectKey}`}
                     alt={hotel.name}
                     fill
                     className="object-cover"

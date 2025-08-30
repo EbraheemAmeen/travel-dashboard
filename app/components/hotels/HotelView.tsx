@@ -118,7 +118,7 @@ export default function HotelView({
             {hotel.mainImage && (
               <div className="relative w-24 h-24 rounded-lg overflow-hidden">
                 <Image
-                  src={`${process.env.NEXT_PUBLIC_IMAGES_URL}/${hotel.mainImage.bucket}/${hotel.mainImage.objectKey}`}
+                  src={`${process.env.NEXT_PUBLIC_IMAGES_URL}/${hotel.mainImage.objectKey}`}
                   alt={hotel.name}
                   fill
                   className="object-cover"
@@ -274,7 +274,7 @@ export default function HotelView({
               {roomType.mainImage && (
                 <div className="relative h-48">
                   <Image
-                    src={`${process.env.NEXT_PUBLIC_IMAGES_URL}/${roomType.mainImage.bucket}/${roomType.mainImage.objectKey}`}
+                    src={`${process.env.NEXT_PUBLIC_IMAGES_URL}/${roomType.mainImage.objectKey}`}
                     alt={roomType.label}
                     fill
                     className="object-cover"

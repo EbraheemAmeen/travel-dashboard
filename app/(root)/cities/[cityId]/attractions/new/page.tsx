@@ -29,7 +29,7 @@ export default async function AddAttractionPage({ params }: PageProps) {
           mode="add" 
           cityId={Number(param.cityId)}
           imagesUrl={process.env.NEXT_PUBLIC_IMAGES_URL!}
-          apiBaseUrl={process.env.NEXT_PUBLIC_API_URL!}
+          apiBaseUrl={process.env.API_URL!}
         />
       </div>
     </HydrationBoundary>

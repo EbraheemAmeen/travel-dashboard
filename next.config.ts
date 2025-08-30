@@ -7,8 +7,8 @@ const nextConfig: NextConfig = {
       {
         protocol: 'http',
         hostname: 'localhost',
-        port: '9000',
-        pathname: '/nestjsstorage/**',
+        port: '3000',
+        pathname: '/storage/**',
       },
       {
         protocol: 'http',

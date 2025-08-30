@@ -71,7 +71,7 @@ const EditCountryForm = ({ countryId, apiBaseUrl, imagesUrl }: EditCountryProps)
       if (countryData.mainImage) {
         const mainImageWithUrl = {
           ...countryData.mainImage,
-          url: `${imagesUrl}/${countryData.mainImage.bucket}/${countryData.mainImage.objectKey}`
+          url: `${imagesUrl}/${countryData.mainImage.objectKey}`
         };
         setSelectedMainImage(mainImageWithUrl);
       }
@@ -80,7 +80,7 @@ const EditCountryForm = ({ countryId, apiBaseUrl, imagesUrl }: EditCountryProps)
       if (countryData.galleryImages && countryData.galleryImages.length > 0) {
         const galleryImagesWithUrls = countryData.galleryImages.map(image => ({
           ...image,
-          url: `${imagesUrl}/${image.bucket}/${image.objectKey}`
+          url: `${imagesUrl}/${image.objectKey}`
         }));
         setSelectedGalleryImages(galleryImagesWithUrls);
       }

@@ -1,257 +1,388 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { createAttraction, CreateAttractionData } from '@/app/actions/attractions/createAttraction';
-import { getPoiTypes } from '@/app/actions/attractions/getPoiTypes';
-import { createPoiType, CreatePoiTypeData } from '@/app/actions/attractions/createPoiType';
-import { getTags } from '@/app/actions/attractions/getTags';
-import { createTag, CreateTagData } from '@/app/actions/attractions/createTag';
-import { getCityById } from '@/app/actions/cities/getCityById';
-import MediaModal from '@/app/components/MediaModal';
-import { showSuccsesToast } from '@/app/lib/SuccessToastUtils';
-import { showErrorToast } from '@/app/lib/ErrorToastUtils';
-import dynamic from 'next/dynamic';
+import { useState, useEffect } from 'react'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import {
+  createAttraction,
+  CreateAttractionData,
+} from '@/app/actions/attractions/createAttraction'
+import { getAttractionById } from '@/app/actions/attractions/getAttractionById'
+import {
+  updateAttraction,
+  UpdateAttractionData,
+} from '@/app/actions/attractions/updateAttraction'
+import { getPoiTypes } from '@/app/actions/attractions/getPoiTypes'
+import {
+  createPoiType,
+  CreatePoiTypeData,
+} from '@/app/actions/attractions/createPoiType'
+import { getTags } from '@/app/actions/attractions/getTags'
+import { createTag, CreateTagData } from '@/app/actions/attractions/createTag'
+import { getCityById } from '@/app/actions/cities/getCityById'
+import MediaModal from '@/app/components/MediaModal'
+import { showSuccsesToast } from '@/app/lib/SuccessToastUtils'
+import { showErrorToast } from '@/app/lib/ErrorToastUtils'
+import dynamic from 'next/dynamic'
+import Image from 'next/image'
 
 // Dynamic import for map component to avoid SSR issues
-const MapComponent = dynamic(() => import('@/app/components/attractions/AttractionMapComponent'), {
-  ssr: false,
-  loading: () => <div className="h-96 bg-gray-200 rounded-lg flex items-center justify-center">Loading map...</div>
-});
+const MapComponent = dynamic(
+  () => import('@/app/components/attractions/AttractionMapComponent'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-96 bg-gray-200 rounded-lg flex items-center justify-center">
+        Loading map...
+      </div>
+    ),
+  }
+)
 
 interface MediaFile {
-  id: number;
-  bucket: string;
-  objectKey: string;
-  mime: string;
-  size: number | null;
-  scope: string;
-  ownerId: string | null;
-  encrypted: boolean;
-  uploadedAt: string;
-  deletedAt: string | null;
-  url?: string;
+  id: number
+  bucket: string
+  objectKey: string
+  mime: string
+  size: number | null
+  scope: string
+  ownerId: string | null
+  encrypted: boolean
+  uploadedAt: string
+  deletedAt: string | null
+  url?: string
 }
 
 interface AttractionFormProps {
-  mode: 'add' | 'edit';
-  cityId: number;
-  attractionId?: number;
-  imagesUrl: string;
-  apiBaseUrl: string;
+  mode: 'add' | 'edit'
+  cityId: number
+  attractionId?: number
+  imagesUrl: string
+  apiBaseUrl: string
 }
 
-export default function AttractionForm({ 
-  mode, 
-  cityId, 
-  attractionId, 
-  imagesUrl, 
-  apiBaseUrl 
+export default function AttractionForm({
+  mode,
+  cityId,
+  attractionId,
+  imagesUrl,
+  apiBaseUrl,
 }: AttractionFormProps) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
+  const router = useRouter()
+  const queryClient = useQueryClient()
 
   // Form state
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [address, setAddress] = useState('');
-  const [website, setWebsite] = useState('');
-  const [price, setPrice] = useState(0);
-  const [discountPrice, setDiscountPrice] = useState(0);
-  const [contactEmail, setContactEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [openingHours, setOpeningHours] = useState('');
-  const [avgDuration, setAvgDuration] = useState(2);
-  const [isActive, setIsActive] = useState(true);
-  const [poiTypeId, setPoiTypeId] = useState<number | ''>('');
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [mainImage, setMainImage] = useState<MediaFile | null>(null);
-  const [galleryImages, setGalleryImages] = useState<MediaFile[]>([]);
-  const [location, setLocation] = useState<[number, number]>([0, 0]);
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [address, setAddress] = useState('')
+  const [website, setWebsite] = useState('')
+  const [price, setPrice] = useState(0)
+  const [discountPrice, setDiscountPrice] = useState(0)
+  const [contactEmail, setContactEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [openingHours, setOpeningHours] = useState('')
+  const [avgDuration, setAvgDuration] = useState(2)
+  const [isActive, setIsActive] = useState(true)
+  const [poiTypeId, setPoiTypeId] = useState<number | ''>('')
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([])
+  const [mainImage, setMainImage] = useState<MediaFile | null>(null)
+  const [galleryImages, setGalleryImages] = useState<MediaFile[]>([])
+  const [location, setLocation] = useState<[number, number]>([0, 0])
 
   // Modal states
-  const [showMainImageModal, setShowMainImageModal] = useState(false);
-  const [showGalleryModal, setShowGalleryModal] = useState(false);
-  const [showPoiTypeModal, setShowPoiTypeModal] = useState(false);
-  const [showTagModal, setShowTagModal] = useState(false);
+  const [showMainImageModal, setShowMainImageModal] = useState(false)
+  const [showGalleryModal, setShowGalleryModal] = useState(false)
+  const [showPoiTypeModal, setShowPoiTypeModal] = useState(false)
+  const [showTagModal, setShowTagModal] = useState(false)
 
   // POI Type form state
-  const [newPoiTypeName, setNewPoiTypeName] = useState('');
-  const [newPoiTypeDescription, setNewPoiTypeDescription] = useState('');
+  const [newPoiTypeName, setNewPoiTypeName] = useState('')
+  const [newPoiTypeDescription, setNewPoiTypeDescription] = useState('')
 
   // Tag form state
-  const [newTagName, setNewTagName] = useState('');
-  const [newTagDescription, setNewTagDescription] = useState('');
+  const [newTagName, setNewTagName] = useState('')
+  const [newTagDescription, setNewTagDescription] = useState('')
 
   // Fetch data
   const { data: city } = useQuery({
     queryKey: ['city', cityId],
     queryFn: () => getCityById(cityId),
-  });
+  })
 
+  const { data: attraction, isLoading: isLoadingAttraction } = useQuery({
+    queryKey: ['attraction', attractionId],
+    queryFn: () => getAttractionById(attractionId!),
+    enabled: mode === 'edit' && !!attractionId,
+  })
+  console.log(attraction)
   const { data: poiTypes, refetch: refetchPoiTypes } = useQuery({
     queryKey: ['poiTypes'],
     queryFn: () => getPoiTypes(),
-  });
+  })
 
   const { data: tags, refetch: refetchTags } = useQuery({
     queryKey: ['tags'],
     queryFn: () => getTags(),
-  });
+  })
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (data: CreateAttractionData) => createAttraction(data),
+    mutationFn: createAttraction,
     onSuccess: () => {
-      showSuccsesToast('Attraction created successfully!');
-      queryClient.invalidateQueries({ queryKey: ['attractions', cityId] });
-      router.push(`/cities/${cityId}/attractions`);
+      showSuccsesToast('Attraction created successfully!')
+      queryClient.invalidateQueries({ queryKey: ['attractions'] })
+      router.push(`/cities/${cityId}/attractions`)
     },
-    onError: (error: any) => {
-      showErrorToast(error.response?.data?.message || 'Failed to create attraction');
+    onError: (error) => {
+      showErrorToast('Failed to create attraction')
+      console.error('Error creating attraction:', error)
     },
-  });
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateAttractionData }) =>
+      updateAttraction(id, data),
+    onSuccess: () => {
+      showSuccsesToast('Attraction updated successfully!')
+      queryClient.invalidateQueries({ queryKey: ['attractions'] })
+      queryClient.invalidateQueries({ queryKey: ['attraction', attractionId] })
+      router.push(`/cities/${cityId}/attractions`)
+    },
+    onError: (error) => {
+      showErrorToast('Failed to update attraction')
+      console.error('Error updating attraction:', error)
+    },
+  })
 
   const createPoiTypeMutation = useMutation({
     mutationFn: (data: CreatePoiTypeData) => createPoiType(data),
     onSuccess: () => {
-      showSuccsesToast('POI Type created successfully!');
-      refetchPoiTypes();
-      setShowPoiTypeModal(false);
-      setNewPoiTypeName('');
-      setNewPoiTypeDescription('');
+      showSuccsesToast('POI Type created successfully!')
+      refetchPoiTypes()
+      setShowPoiTypeModal(false)
+      setNewPoiTypeName('')
+      setNewPoiTypeDescription('')
     },
     onError: (error: any) => {
-      showErrorToast(error.response?.data?.message || 'Failed to create POI Type');
+      showErrorToast(
+        error.response?.data?.message || 'Failed to create POI Type'
+      )
     },
-  });
+  })
 
   const createTagMutation = useMutation({
     mutationFn: (data: CreateTagData) => createTag(data),
     onSuccess: () => {
-      showSuccsesToast('Tag created successfully!');
-      refetchTags();
-      setShowTagModal(false);
-      setNewTagName('');
-      setNewTagDescription('');
+      showSuccsesToast('Tag created successfully!')
+      refetchTags()
+      setShowTagModal(false)
+      setNewTagName('')
+      setNewTagDescription('')
     },
     onError: (error: any) => {
-      showErrorToast(error.response?.data?.message || 'Failed to create tag');
+      showErrorToast(error.response?.data?.message || 'Failed to create tag')
     },
-  });
+  })
 
-  // Set initial location when city data is loaded
-  useEffect(() => {
-    if (city && city.center && location[0] === 0 && location[1] === 0) {
-      // Swap coordinates: API returns [lon, lat] but we need [lat, lon] for the form
-      setLocation([city.center[1], city.center[0]]);
+  // Populate form data when attraction is loaded (edit mode)
+useEffect(() => {
+  if (mode === 'edit' && attraction) {
+    setName(attraction.name || '')
+    setDescription(attraction.description || '')
+    setAddress(attraction.address || '')
+    setWebsite(attraction.website || '')
+    setPrice(attraction.price || 0)
+    setDiscountPrice(attraction.discountPrice || 0)
+    setContactEmail(attraction.contactEmail || '')
+    setPhone(attraction.phone || '')
+    setOpeningHours(attraction.openingHours || '')
+
+    // Convert duration from HH:MM:SS to hours
+    const durationParts = attraction.avgDuration?.split(':') || ['0', '0', '0']
+    const hours = parseInt(durationParts[0]) + parseInt(durationParts[1]) / 60
+    setAvgDuration(hours)
+
+    setIsActive(attraction.is_active || true)
+    setPoiTypeId(attraction.poiTypeId || '')
+    setSelectedTagIds(attraction.tags?.map((tag) => tag.id) || [])
+    setMainImage(attraction?.mainImage || null)
+    setGalleryImages(attraction?.galleryImages || [])
+
+    // ✅ FIX: handle PostGIS-style location object
+    if (attraction.location && attraction.location?.x && attraction.location?.y) {
+      setLocation([attraction.location?.y, attraction.location?.x]) // [lat, lon]
+    } else if (city?.center) {
+      setLocation([city.center[1], city.center[0]])
     }
-  }, [city, location]);
+  }
+}, [attraction, mode, city])
+
+  // Set default location when city is loaded (add mode)
+  useEffect(() => {
+    if (
+      mode === 'add' &&
+      city?.center &&
+      location[0] === 0 &&
+      location[1] === 0
+    ) {
+      setLocation([city.center[1], city.center[0]])
+    }
+  }, [city, mode, location])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
     if (!mainImage) {
-      showErrorToast('Please select a main image');
-      return;
+      showErrorToast('Please select a main image')
+      return
     }
 
-    if (!poiTypeId) {
-      showErrorToast('Please select a POI type');
-      return;
+    if (mode === 'add') {
+      const payload: CreateAttractionData = {
+        name: name.trim(),
+        cityId,
+        poiTypeId: Number(poiTypeId),
+        description: description.trim(),
+        address: address.trim(),
+        location: [location[1], location[0]], // Swap back to [lon, lat] for API
+        website: website.trim() || undefined,
+        price: parseFloat(price.toString()),
+        discountPrice:
+          discountPrice > 0 ? parseFloat(discountPrice.toString()) : undefined,
+        contactEmail: contactEmail.trim() || undefined,
+        phone: phone.trim() || undefined,
+        openingHours: openingHours.trim() || undefined,
+        avgDuration: `${Math.floor(avgDuration)
+          .toString()
+          .padStart(2, '0')}:${Math.floor((avgDuration % 1) * 60)
+          .toString()
+          .padStart(2, '0')}:00`,
+        isActive,
+        mainImageId: mainImage.id,
+        galleryImageIds: galleryImages.map((image) => image.id),
+        tagIds: selectedTagIds,
+      }
+
+      createMutation.mutate(payload)
+    } else {
+      const payload: UpdateAttractionData = {
+        name: name.trim(),
+        poiTypeId: Number(poiTypeId),
+        description: description.trim(),
+        address: address.trim(),
+        location: [location[1], location[0]], // Swap back to [lon, lat] for API
+        website: website.trim() || undefined,
+        price: parseFloat(price.toString()),
+        discountPrice:
+          discountPrice > 0 ? parseFloat(discountPrice.toString()) : undefined,
+        contactEmail: contactEmail.trim() || undefined,
+        phone: phone.trim() || undefined,
+        openingHours: openingHours.trim() || undefined,
+        avgDuration: `${Math.floor(avgDuration)
+          .toString()
+          .padStart(2, '0')}:${Math.floor((avgDuration % 1) * 60)
+          .toString()
+          .padStart(2, '0')}:00`,
+        isActive,
+        mainImageId: mainImage.id,
+        galleryImageIds: galleryImages.map((image) => image.id),
+        tagIds: selectedTagIds,
+      }
+
+      updateMutation.mutate({ id: attractionId!, data: payload })
     }
-
-    const payload: CreateAttractionData = {
-      name: name.trim(),
-      cityId,
-      poiTypeId: Number(poiTypeId),
-      description: description.trim(),
-      address: address.trim(),
-      location: [location[1], location[0]], // Swap back to [lon, lat] for API
-      website: website.trim() || undefined,
-      price: parseFloat(price.toString()),
-      discountPrice: discountPrice > 0 ? parseFloat(discountPrice.toString()) : undefined,
-      contactEmail: contactEmail.trim() || undefined,
-      phone: phone.trim() || undefined,
-      openingHours: openingHours.trim() || undefined,
-      avgDuration: `${Math.floor(avgDuration).toString().padStart(2, '0')}:${Math.floor((avgDuration % 1) * 60).toString().padStart(2, '0')}:00`,
-      isActive,
-      mainImageId: mainImage.id,
-      galleryImageIds: galleryImages.map((image) => image.id),
-      tagIds: selectedTagIds,
-    };
-
-    createMutation.mutate(payload);
-  };
+  }
 
   const handleSelectMainImage = (images: MediaFile[]) => {
     if (images.length > 0) {
-      setMainImage(images[0]);
+      setMainImage(images[0])
     }
-    setShowMainImageModal(false);
-  };
+    setShowMainImageModal(false)
+  }
 
   const handleSelectGalleryImages = (images: MediaFile[]) => {
-    setGalleryImages(images);
-    setShowGalleryModal(false);
-  };
+    setGalleryImages(images)
+    setShowGalleryModal(false)
+  }
 
   const handleCreatePoiType = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (newPoiTypeName.trim() && newPoiTypeDescription.trim()) {
       createPoiTypeMutation.mutate({
         name: newPoiTypeName.trim(),
         description: newPoiTypeDescription.trim(),
-      });
+      })
     }
-  };
+  }
 
   const handleCreateTag = (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (newTagName.trim() && newTagDescription.trim()) {
       createTagMutation.mutate({
         name: newTagName.trim(),
         description: newTagDescription.trim(),
-      });
+      })
     }
-  };
+  }
 
   const handleTagToggle = (tagId: number) => {
-    setSelectedTagIds(prev => 
-      prev.includes(tagId) 
-        ? prev.filter(id => id !== tagId)
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
         : [...prev, tagId]
-    );
-  };
+    )
+  }
 
   const clearAllFields = () => {
-    setName('');
-    setDescription('');
-    setAddress('');
-    setWebsite('');
-    setPrice(0);
-    setDiscountPrice(0);
-    setContactEmail('');
-    setPhone('');
-    setOpeningHours('');
-    setAvgDuration(2);
-    setIsActive(true);
-    setPoiTypeId('');
-    setSelectedTagIds([]);
-    setMainImage(null);
-    setGalleryImages([]);
+    setName('')
+    setDescription('')
+    setAddress('')
+    setWebsite('')
+    setPrice(0)
+    setDiscountPrice(0)
+    setContactEmail('')
+    setPhone('')
+    setOpeningHours('')
+    setAvgDuration(2)
+    setIsActive(true)
+    setPoiTypeId('')
+    setSelectedTagIds([])
+    setMainImage(null)
+    setGalleryImages([])
     if (city?.center) {
-      setLocation([city.center[1], city.center[0]]);
+      setLocation([city.center[1], city.center[0]])
     }
-  };
+  }
+
+  if (mode === 'edit' && isLoadingAttraction) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-400">Loading attraction data...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-6xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-white">
+          {mode === 'add' ? 'Add New Attraction' : 'Edit Attraction'}
+        </h1>
+        <p className="text-gray-400 mt-2">
+          {mode === 'add'
+            ? 'Create a new attraction for this city'
+            : 'Update attraction information and details'}
+        </p>
+      </div>
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
         <div className="bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4 text-white">Basic Information</h3>
+          <h3 className="text-lg font-semibold mb-4 text-white">
+            Basic Information
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -273,7 +404,9 @@ export default function AttractionForm({
               <div className="flex gap-2">
                 <select
                   value={poiTypeId}
-                  onChange={(e) => setPoiTypeId(e.target.value ? Number(e.target.value) : '')}
+                  onChange={(e) =>
+                    setPoiTypeId(e.target.value ? Number(e.target.value) : '')
+                  }
                   className="flex-1 px-3 py-2 border border-gray-600 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -367,7 +500,9 @@ export default function AttractionForm({
 
         {/* Contact & Details */}
         <div className="bg-gray-800 p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4 text-white">Contact & Details</h3>
+          <h3 className="text-lg font-semibold mb-4 text-white">
+            Contact & Details
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -447,7 +582,10 @@ export default function AttractionForm({
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {tags?.map((tag: any) => (
-              <label key={tag.id} className="flex items-center space-x-2 cursor-pointer">
+              <label
+                key={tag.id}
+                className="flex items-center space-x-2 cursor-pointer"
+              >
                 <input
                   type="checkbox"
                   checked={selectedTagIds.includes(tag.id)}
@@ -465,16 +603,22 @@ export default function AttractionForm({
           <h3 className="text-lg font-semibold mb-4 text-white">Location</h3>
           <div className="mb-4">
             <p className="text-sm text-gray-400 mb-2">
-              Click on the map to set the attraction location. The green circle shows the city boundaries.
+              Click on the map to set the attraction location. The green circle
+              shows the city boundaries.
             </p>
             <p className="text-sm text-gray-500">
-              Coordinates: {location[0].toFixed(4)}, {location[1].toFixed(4)}
+              Coordinates: {location[0]?.toFixed(4) || '0.0000'},{' '}
+              {location[1]?.toFixed(4) || '0.0000'}
             </p>
           </div>
           <div className="h-96 rounded-lg overflow-hidden z-[1]">
             <MapComponent
               center={location}
-              cityCenter={city?.center ? [city.center[1], city.center[0]] : [30.0444, 31.2357]}
+              cityCenter={
+                city?.center
+                  ? [city.center[1], city.center[0]]
+                  : [30.0444, 31.2357]
+              }
               cityRadius={city?.radius ? city.radius * 1000 : 25000}
               onLocationChange={setLocation}
             />
@@ -484,7 +628,7 @@ export default function AttractionForm({
         {/* Images */}
         <div className="bg-gray-800 p-6 rounded-lg shadow">
           <h3 className="text-lg font-semibold mb-4 text-white">Images</h3>
-          
+
           {/* Main Image */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -493,8 +637,10 @@ export default function AttractionForm({
             <div className="flex items-center space-x-4">
               {mainImage ? (
                 <div className="relative">
-                  <img
-                    src={`${imagesUrl}/${mainImage.bucket}/${mainImage.objectKey}`}
+                  <Image
+                    width={100}
+                    height={100}
+                    src={`${imagesUrl}/${mainImage.objectKey}`}
                     alt={mainImage.objectKey}
                     className="w-20 h-20 object-cover rounded-lg"
                   />
@@ -532,13 +678,17 @@ export default function AttractionForm({
                   {galleryImages.map((image, index) => (
                     <div key={image.id} className="relative">
                       <img
-                        src={`${imagesUrl}/${image.bucket}/${image.objectKey}`}
+                        src={`${imagesUrl}/${image.objectKey}`}
                         alt={image.objectKey}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
                       <button
                         type="button"
-                        onClick={() => setGalleryImages(galleryImages.filter((_, i) => i !== index))}
+                        onClick={() =>
+                          setGalleryImages(
+                            galleryImages.filter((_, i) => i !== index)
+                          )
+                        }
                         className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
                       >
                         ×
@@ -573,10 +723,18 @@ export default function AttractionForm({
           </button>
           <button
             type="submit"
-            disabled={createMutation.status === 'pending'}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={
+              createMutation.status === 'pending' ||
+              updateMutation.status === 'pending'
+            }
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {createMutation.status === 'pending' ? 'Creating...' : 'Create Attraction'}
+            {createMutation.status === 'pending' ||
+            updateMutation.status === 'pending'
+              ? 'Saving...'
+              : mode === 'add'
+              ? 'Create Attraction'
+              : 'Update Attraction'}
           </button>
         </div>
       </form>
@@ -613,10 +771,14 @@ export default function AttractionForm({
       {showPoiTypeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold mb-4 text-white">Add New POI Type</h3>
+            <h3 className="text-xl font-bold mb-4 text-white">
+              Add New POI Type
+            </h3>
             <form onSubmit={handleCreatePoiType} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Name *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Name *
+                </label>
                 <input
                   type="text"
                   value={newPoiTypeName}
@@ -627,7 +789,9 @@ export default function AttractionForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Description *
+                </label>
                 <textarea
                   value={newPoiTypeDescription}
                   onChange={(e) => setNewPoiTypeDescription(e.target.value)}
@@ -650,7 +814,9 @@ export default function AttractionForm({
                   disabled={createPoiTypeMutation.status === 'pending'}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  {createPoiTypeMutation.status === 'pending' ? 'Creating...' : 'Create'}
+                  {createPoiTypeMutation.status === 'pending'
+                    ? 'Creating...'
+                    : 'Create'}
                 </button>
               </div>
             </form>
@@ -665,7 +831,9 @@ export default function AttractionForm({
             <h3 className="text-xl font-bold mb-4 text-white">Add New Tag</h3>
             <form onSubmit={handleCreateTag} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Name *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Name *
+                </label>
                 <input
                   type="text"
                   value={newTagName}
@@ -676,7 +844,9 @@ export default function AttractionForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Description *</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Description *
+                </label>
                 <textarea
                   value={newTagDescription}
                   onChange={(e) => setNewTagDescription(e.target.value)}
@@ -699,7 +869,9 @@ export default function AttractionForm({
                   disabled={createTagMutation.status === 'pending'}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors disabled:opacity-50"
                 >
-                  {createTagMutation.status === 'pending' ? 'Creating...' : 'Create'}
+                  {createTagMutation.status === 'pending'
+                    ? 'Creating...'
+                    : 'Create'}
                 </button>
               </div>
             </form>
@@ -707,5 +879,5 @@ export default function AttractionForm({
         </div>
       )}
     </div>
-  );
-} 
+  )
+}

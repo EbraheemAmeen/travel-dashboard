@@ -24,7 +24,7 @@ export default function NewHotelPage({ params }: NewHotelPageProps) {
     <HotelForm
       mode="add"
       cityId={cityId}
-      apiBaseUrl={process.env.NEXT_PUBLIC_API_URL || ''}
+      apiBaseUrl={process.env.API_URL || ''}
       imagesUrl={process.env.NEXT_PUBLIC_IMAGES_URL || ''}
     />
   );

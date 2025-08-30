@@ -134,7 +134,18 @@ const CountriesList = ({ page, limit, imagesUrl, orderBy, orderDir }) => {
             className="h-40 p-4 bg-white/10 border border-white/20 backdrop-blur-md rounded-xl flex flex-col justify-between text-white shadow-md hover:bg-white/15 transition relative"
           >
             <div className="flex flex-col items-center">
-              <div style={{ backgroundImage: `url(${imagesUrl}/${country.mainImage.bucket}/${country.mainImage.objectKey})` }} className="w-16 h-16 bg-cover bg-center rounded-full mb-2" />
+              {country.mainImage ? (
+                <div
+                  style={{ backgroundImage: `url(${imagesUrl}/${country.mainImage.objectKey})` }}
+                  className="w-16 h-16 bg-cover bg-center rounded-full mb-2"
+                />
+              ) : (
+                <div
+                  className="w-16 h-16 bg-red-600 rounded-full mb-2 flex items-center justify-center"
+                >
+                  <span className="text-white text-xs">No Image</span>
+                </div>
+              )}
               <div className="text-lg font-semibold">{country.name}</div>
             </div>
             <div className="flex justify-end mt-4 relative">

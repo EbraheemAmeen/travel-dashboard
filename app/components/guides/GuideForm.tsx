@@ -1,204 +1,315 @@
-'use client';
+'use client'
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createGuide } from '@/app/actions/guides/createGuide';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createGuide } from '@/app/actions/guides/createGuide'
+import { getGuideById } from '@/app/actions/guides/getGuideById'
+import { updateGuide, UpdateGuideData } from '@/app/actions/guides/updateGuide'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 interface GuideFormProps {
-  mode: 'add' | 'edit';
-  cityId: number;
-  guideId?: number;
+  imageUrl?: string
+  mode: 'add' | 'edit'
+  cityId: number
+  guideId?: string
 }
 
-export default function GuideForm({ mode, cityId, guideId }: GuideFormProps) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
+export default function GuideForm({
+  mode,
+  cityId,
+  guideId,
+  imageUrl,
+}: GuideFormProps) {
+  const router = useRouter()
+  const qc = useQueryClient()
 
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
-  const [pricePerDay, setPricePerDay] = useState<number>(50);
-  const [description, setDescription] = useState('');
-  const [avatar, setAvatar] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // shared state
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [birthDate, setBirthDate] = useState('') // yyyy-mm-dd
+  const [pricePerDay, setPricePerDay] = useState<number>(50)
+  const [description, setDescription] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const createMutation = useMutation({
-    mutationFn: createGuide,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['guides'] });
-      router.push(`/cities/${cityId}/guides`);
+  // only for “add”
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  // for preview
+  const [serverAvatarUrl, setServerAvatarUrl] = useState('')
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('')
+
+  // ---- create mutation (unchanged) ----
+  const createM = useMutation({
+    mutationFn: (data: any) => createGuide(data),
+    onSuccess() {
+      qc.invalidateQueries({ queryKey: ['guides'] })
+      router.push(`/cities/${cityId}/guides`)
     },
-    onError: (error: any) => {
-      setError(error.response?.data?.message || 'Failed to create guide');
+    onError(e: any) {
+      setError(e.response?.data?.message || 'Failed to create guide')
     },
-  });
+  })
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
+  // ---- update mutation ----
+  const updateM = useMutation({
+    mutationFn: (data: UpdateGuideData) => {
+      if (!guideId) throw new Error('no id')
+      return updateGuide(guideId, data)
+    },
+    onSuccess() {
+      qc.invalidateQueries({ queryKey: ['guides'] })
+      qc.invalidateQueries({ queryKey: ['guide', guideId] })
+      router.push(`/cities/${cityId}/guides`)
+    },
+    onError(e: any) {
+      setError(e.response?.data?.message || 'Failed to update guide')
+    },
+  })
 
-    if (!avatar) {
-      setError('Please select an avatar image');
-      return;
+  // ---- fetch for edit ----
+  const { data: guide, isLoading: loadingGuide } = useQuery({
+    queryKey: ['guide', guideId],
+    queryFn: () =>
+      mode === 'edit' && guideId ? getGuideById({ guideId }) : null,
+    enabled: mode === 'edit' && !!guideId,
+  })
+
+  // ---- init form in edit ----
+  useEffect(() => {
+    if (mode === 'edit' && guide) {
+      const u = guide?.user
+      setName(u.name || '')
+      setPhone(u.phone || '')
+      setBirthDate(u.birthDate ? u.birthDate.slice(0, 10) : '')
+      setPricePerDay(parseFloat(guide.pricePerDay))
+      setDescription(guide.description || '')
+      setServerAvatarUrl(`${imageUrl}${u.avatar}`)
+      setAvatarFile(null)
+      setAvatarPreviewUrl('')
     }
+  }, [mode, guide])
 
-    const guideData = {
-      name,
-      username,
-      email,
-      password,
-      phone,
-      pricePerDay,
-      cityId,
-      description,
-      avatar,
-    };
+  // ---- clean up preview URL ----
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl)
+    }
+  }, [avatarPreviewUrl])
+
+  // ---- file change ----
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null
+    setAvatarFile(f)
+    if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl)
+    if (f) setAvatarPreviewUrl(URL.createObjectURL(f))
+    else setAvatarPreviewUrl('')
+  }
+
+  // ---- submit ----
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
 
     if (mode === 'add') {
-      createMutation.mutate(guideData);
+      if (!avatarFile) {
+        setError('Please select an avatar image')
+        return
+      }
+      createM.mutate({
+        name,
+        username,
+        email,
+        password,
+        phone,
+        birthDate,
+        pricePerDay,
+        cityId,
+        description,
+        avatar: avatarFile,
+      })
+    } else {
+      const payload: UpdateGuideData = {
+        name,
+        phone,
+        birthDate,
+        pricePerDay,
+        cityId,
+        description,
+        // only include avatar if picked
+        ...(avatarFile && { avatar: avatarFile }),
+      }
+      updateM.mutate(payload)
     }
-  };
+  }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAvatar(file);
-    }
-  };
+  if (loadingGuide && mode === 'edit') {
+    return <p className="text-gray-300">Loading guide…</p>
+  }
 
-  const loading = createMutation.isPending;
+  const loading = createM?.isLoading || updateM?.isLoading
 
   return (
     <div className="p-12 min-h-screen bg-gray-900 text-white">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-white">
+          <h1 className="text-3xl font-bold">
             {mode === 'add' ? 'Add New Guide' : 'Edit Guide'}
           </h1>
           <button
             onClick={() => router.back()}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded"
           >
             Back
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-900 border border-red-700 p-4 mb-6 rounded">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* in edit mode we hide username/email/password */}
+          {mode === 'add' && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block mb-1 text-gray-300">Username</label>
+                  <input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-gray-300">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-gray-300">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+              <label className="block mb-1 text-gray-300">Name</label>
               <input
-                type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Phone</label>
+              <label className="block mb-1 text-gray-300">Phone</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Price Per Day</label>
+              <label className="block mb-1 text-gray-300">Birth Date</label>
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-gray-300">Price per day</label>
               <input
                 type="number"
                 value={pricePerDay}
                 onChange={(e) => setPricePerDay(parseFloat(e.target.value))}
-                required
                 min="0"
                 step="0.01"
-                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
+                required
+                className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+            <label className="block mb-1 text-gray-300">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              required
               rows={4}
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
+              required
+              className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Avatar</label>
+            <label className="block mb-1 text-gray-300">Avatar</label>
             <input
               type="file"
               accept="image/*"
               onChange={handleFileChange}
-              required
-              className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white"
+              className="w-full bg-gray-800 border border-gray-600 px-3 py-2 rounded"
             />
-            {avatar && (
-              <p className="text-sm text-gray-400 mt-2">Selected: {avatar.name}</p>
-            )}
+            <div className="mt-3 flex gap-4">
+              {mode === 'edit' && serverAvatarUrl && !avatarPreviewUrl && (
+                <Image
+                  width={100}
+                  height={100}
+                  src={serverAvatarUrl}
+                  alt="Current avatar"
+                  className="h-24 w-24 object-cover rounded border"
+                />
+              )}
+              {avatarPreviewUrl && (
+                <Image
+                  width={100}
+                  height={100}
+                  src={avatarPreviewUrl}
+                  alt="New avatar preview"
+                  className="h-24 w-24 object-cover rounded border"
+                />
+              )}
+            </div>
           </div>
 
           <div className="flex gap-4">
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+              className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded disabled:opacity-50"
             >
-              {loading ? 'Saving...' : mode === 'add' ? 'Create Guide' : 'Update Guide'}
+              {loading
+                ? 'Saving...'
+                : mode === 'add'
+                ? 'Create Guide'
+                : 'Update Guide'}
             </button>
             <button
               type="button"
               onClick={() => router.back()}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors"
+              className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded"
             >
               Cancel
             </button>
@@ -206,5 +317,5 @@ export default function GuideForm({ mode, cityId, guideId }: GuideFormProps) {
         </form>
       </div>
     </div>
-  );
-} 
+  )
+}

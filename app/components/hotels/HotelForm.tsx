@@ -342,7 +342,7 @@ export default function HotelForm({ mode, cityId, hotelId, apiBaseUrl, imagesUrl
               {mainImage && (
                 <div className="relative w-24 h-24 rounded-lg overflow-hidden">
                   <img
-                    src={`${imagesUrl}/${mainImage.bucket}/${mainImage.objectKey}`}
+                    src={`${imagesUrl}/${mainImage.objectKey}`}
                     alt="Main"
                     className="w-full h-full object-cover"
                   />
@@ -365,7 +365,7 @@ export default function HotelForm({ mode, cityId, hotelId, apiBaseUrl, imagesUrl
               {galleryImages.map((image) => (
                 <div key={image.id} className="relative">
                   <img
-                    src={`${imagesUrl}/${image.bucket}/${image.objectKey}`}
+                    src={`${imagesUrl}/${image.objectKey}`}
                     alt="Gallery"
                     className="w-24 h-24 object-cover rounded-lg"
                   />

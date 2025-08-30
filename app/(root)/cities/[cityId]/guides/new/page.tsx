@@ -6,10 +6,10 @@ interface NewGuidePageProps {
   };
 }
 
-export default function NewGuidePage({ params }: NewGuidePageProps) {
-  const cityId = parseInt(params.cityId);
-
-  if (isNaN(cityId)) {
+export default async function NewGuidePage({ params }: NewGuidePageProps) {
+  const param = await params;
+const cityId = param.cityId
+  if (isNaN(parseInt(cityId))) {
     return (
       <div className="p-12 min-h-screen bg-gray-900 text-white">
         <div className="text-center">
@@ -23,7 +23,7 @@ export default function NewGuidePage({ params }: NewGuidePageProps) {
   return (
     <GuideForm
       mode="add"
-      cityId={cityId}
+      cityId={Number(cityId)}
     />
   );
 } 

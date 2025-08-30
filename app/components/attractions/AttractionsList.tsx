@@ -2,10 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAttractions } from '@/app/actions/attractions/getAttractions';
+import { deleteAttraction } from '@/app/actions/attractions/deleteAttraction';
 import { getPoiTypes } from '@/app/actions/attractions/getPoiTypes';
 import Link from 'next/link';
 import { useState } from 'react';
 import Image from 'next/image';
+import { showSuccsesToast } from '@/app/lib/SuccessToastUtils';
+import { showErrorToast } from '@/app/lib/ErrorToastUtils';
 
 interface AttractionsListProps {
   cityId: number;
@@ -58,15 +61,15 @@ export default function AttractionsList({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: ({ attractionId }: { attractionId: number }) => 
-      // TODO: Implement deleteAttraction action
-      Promise.resolve(),
+    mutationFn: ({ attractionId }: { attractionId: number }) => deleteAttraction(attractionId),
     onSuccess: () => {
+      showSuccsesToast('Attraction deleted successfully!');
       queryClient.invalidateQueries({ queryKey: ['attractions'] });
       setDeleteModal({ open: false, attraction: null });
       setDeleteError(null);
     },
     onError: (error: any) => {
+      showErrorToast('Failed to delete attraction');
       setDeleteError(error.response?.data?.message || 'Failed to delete attraction');
     },
   });
@@ -229,7 +232,7 @@ export default function AttractionsList({
               {attraction.mainImage && (
                 <div className="relative h-48">
                   <Image
-                    src={`${process.env.NEXT_PUBLIC_IMAGES_URL}/${attraction.mainImage.bucket}/${attraction.mainImage.objectKey}`}
+                    src={`${process.env.NEXT_PUBLIC_IMAGES_URL}/${attraction.mainImage.objectKey}`}
                     alt={attraction.name}
                     fill
                     className="object-cover"

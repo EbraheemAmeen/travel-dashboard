@@ -32,7 +32,7 @@ export default async function EditRoomTypePage({ params }: PageProps) {
           hotelId={Number(param.hotelId)}
           roomTypeId={Number(param.roomTypeId)}
           imagesUrl={process.env.NEXT_PUBLIC_IMAGES_URL!}
-          apiBaseUrl={process.env.NEXT_PUBLIC_API_URL!}
+          apiBaseUrl={process.env.API_URL!}
         />
       </div>
     </HydrationBoundary>

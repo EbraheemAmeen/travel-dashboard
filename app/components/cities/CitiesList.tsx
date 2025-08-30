@@ -124,7 +124,18 @@ export default function CitiesList({ imagesUrl }: { imagesUrl: string }) {
                 className="h-40 p-4 bg-white/10 border border-white/20 backdrop-blur-md rounded-xl flex flex-col justify-between text-white shadow-md hover:bg-white/15 transition relative"
               >
                 <Link href={`/cities/${city.id}`} className="flex flex-col items-center">
-                  <div style={{ backgroundImage: `url(${imagesUrl}/${city.mainImage.bucket}/${city.mainImage.objectKey})` }} className="w-16 h-16 bg-cover bg-center rounded-full mb-2" />
+                  {city.mainImage && city.mainImage.objectKey ? (
+                    <div
+                      style={{ backgroundImage: `url(${imagesUrl}/${city.mainImage.objectKey})` }}
+                      className="w-16 h-16 bg-cover bg-center rounded-full mb-2"
+                    />
+                  ) : (
+                    <div
+                      className="w-16 h-16 bg-red-600 rounded-full mb-2 flex items-center justify-center"
+                    >
+                      <span className="text-white text-xs">No Image</span>
+                    </div>
+                  )}
                   <div className="text-lg font-semibold">{city.name}</div>
                   <div className="text-xs text-gray-400">{city.countryId && countries?.data?.find((c: any) => c.id === city.countryId)?.name}</div>
                 </Link>

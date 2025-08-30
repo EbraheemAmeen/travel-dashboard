@@ -206,7 +206,7 @@ export default function CityForm({ mode, cityId, imagesUrl, apiBaseUrl }: CityFo
           </button>
           {mainImage && (
             <div className="mt-2 flex items-center gap-4">
-              <img src={`${imagesUrl}/${mainImage.bucket}/${mainImage.objectKey}`} alt="Main" className="w-24 h-16 object-cover rounded border border-gray-700" />
+              <img src={`${imagesUrl}/${mainImage.objectKey}`} alt="Main" className="w-24 h-16 object-cover rounded border border-gray-700" />
               <button type="button" onClick={() => setMainImage(null)} className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-white">Remove</button>
             </div>
           )}
@@ -219,7 +219,7 @@ export default function CityForm({ mode, cityId, imagesUrl, apiBaseUrl }: CityFo
           {galleryImages.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {galleryImages.map((img) => (
-                <img key={img.id} src={`${imagesUrl}/${img.bucket}/${img.objectKey}`} alt="Gallery" className="w-16 h-12 object-cover rounded border border-gray-700" />
+                <img key={img.id} src={`${imagesUrl}/${img.objectKey}`} alt="Gallery" className="w-16 h-12 object-cover rounded border border-gray-700" />
               ))}
             </div>
           )}

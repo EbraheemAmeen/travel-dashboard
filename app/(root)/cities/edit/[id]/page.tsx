@@ -37,7 +37,7 @@ const EditCityPage = async ({ params }: EditCityPageProps) => {
       <CityForm
         mode="edit"
         cityId={cityId}
-        apiBaseUrl={process.env.NEXT_PUBLIC_API_URL || ''}
+        apiBaseUrl={process.env.API_URL || ''}
         imagesUrl={process.env.NEXT_PUBLIC_IMAGES_URL || ''}
       />
     </HydrationBoundary>

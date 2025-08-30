@@ -29,12 +29,6 @@ const SideBar = () => {
   const allSidebarItems = [
     { name: 'Home', path: '/', icon: <Home className="w-5 h-5" /> },
     {
-      name: 'Trips',
-      path: '/trips',
-      icon: <PlaneTakeoff className="w-5 h-5" />,
-      permission: 'trip:read',
-    },
-    {
       name: 'Countries',
       path: '/countries',
       icon: <Globe className="w-5 h-5" />,
@@ -47,29 +41,15 @@ const SideBar = () => {
       permission: 'city:read',
     },
     {
-      name: 'Airline Companies',
-      path: '/airlines',
-      icon: <Plane className="w-5 h-5" />,
-      permission: 'airport:read',
-    },
-    {
-      name: 'Tourist Attractions',
-      path: '/attractions',
-      icon: <Landmark className="w-5 h-5" />,
-    },
-    {
-      name: 'Hotels',
-      path: '/hotels',
-      icon: <Hotel className="w-5 h-5" />,
-      permission: 'hotel:read',
-    },
-    {
       name: 'Users',
       path: '/users',
       icon: <UserCircle2Icon className="w-5 h-5" />,
       permission: 'user:read:all',
     },
+    { name: 'Balance Requests', path: '/balance-requests', icon: <Globe2Icon className="w-5 h-5" /> },
+    { name: 'Transactions', path: '/transactions', icon: <Globe2Icon className="w-5 h-5" /> },
     { name: 'Media', path: '/media', icon: <Camera className="w-5 h-5" /> },
+    { name: 'Orders', path: '/orders', icon: <Plane className="w-5 h-5" /> },
     {
       name: 'Settings',
       path: '/settings',

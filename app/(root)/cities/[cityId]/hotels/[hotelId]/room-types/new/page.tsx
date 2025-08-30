@@ -22,7 +22,7 @@ export default async function AddRoomTypePage({ params }: PageProps) {
           mode="add" 
           hotelId={Number(param.hotelId)}
           imagesUrl={process.env.NEXT_PUBLIC_IMAGES_URL!}
-          apiBaseUrl={process.env.NEXT_PUBLIC_API_URL!}
+          apiBaseUrl={process.env.API_URL!}
         />
       </div>
     </HydrationBoundary>
